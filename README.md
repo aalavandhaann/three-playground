@@ -1,4 +1,5 @@
 # three-playground
 A three playground to test various ideas, and debug problems
 
-# Playground [DEMO](./demo)
+# [HOME](./demo)
+# Plane Projection Playground [DEMO](./demo/planeprojection.html)
