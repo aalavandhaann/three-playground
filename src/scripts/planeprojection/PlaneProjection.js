@@ -1,4 +1,5 @@
 import { GUI } from "dat.gui";
+import { Plane } from "three";
 import { ArrowHelper, BoxGeometry, Mesh, MeshStandardMaterial, Vector2, Vector3 } from "three";
 import { ThreeScene } from "../common/ThreeScene";
 import { CanvasProjection } from "./CanvasProjection";
@@ -18,9 +19,6 @@ export class PlaneProjection extends ThreeScene{
         this.__boxContributes = true;
         this.__boxLContributes = true;
         this.__boxRContributes = true;
-        this.__ambiLight = true;
-        this.__hemiLight = true;
-        this.__dirLight = true;
         this.__addLightArrows();
         this.__addMeshes();
         this.__addGUI();
@@ -65,20 +63,21 @@ export class PlaneProjection extends ThreeScene{
         shadowsConfiguration.add(this, '__boxLContributes').name('Box Left').onChange(this.__meshUpdatedEvent);
         shadowsConfiguration.add(this, '__boxRContributes').name('Box Right').onChange(this.__meshUpdatedEvent);
 
-        lightContributorsConfiguration.add(this, '__ambiLight').name('Ambient Light').onChange(this.__meshUpdatedEvent);
-        lightContributorsConfiguration.add(this, '__hemiLight').name('Hemisphere Light').onChange(this.__meshUpdatedEvent);
-        lightContributorsConfiguration.add(this, '__dirLight').name('Directional Light').onChange(this.__meshUpdatedEvent);
+        lightContributorsConfiguration.add(this.__ambientLight, 'visible').name('Ambient Light').onChange(this.__meshUpdatedEvent);
+        lightContributorsConfiguration.add(this.__hemisphereLight, 'visible').name('Hemisphere Light').onChange(this.__meshUpdatedEvent);
+        lightContributorsConfiguration.add(this.__directionalLight, 'visible').name('Directional Light').onChange(this.__meshUpdatedEvent);
 
 
-        meshSizeFolder.open();
-        meshRotationFolder.open();
-        lightConfiguration.open();
-        shadowsConfiguration.open();
-        lightContributorsConfiguration.open();
-        lightStrengthConfiguration.open();
+        // meshSizeFolder.open();
+        // meshRotationFolder.open();
+        // lightConfiguration.open();
+        // shadowsConfiguration.open();
+        // lightContributorsConfiguration.open();
+        // lightStrengthConfiguration.open();
     }
 
-    __getPrincipleAxes(){
+    __getPrincipleAxes(object3d = null){
+        object3d = (object3d) ? object3d : this.__directionalLight;
         let normal = this.__directionalLight.target.position.clone().sub(this.__directionalLight.position).normalize();
         let p1 = normal.clone().cross(UP_DIRECTION).normalize();
         let p2 = p1.clone().applyAxisAngle(normal, -Math.PI * 0.5).normalize();
@@ -117,6 +116,7 @@ export class PlaneProjection extends ThreeScene{
         box.scale.set(30, 30, 30);
         box.castShadow = true;
         box.receiveShadow = true;
+        // box.updateMatrixWorld();
         return box;
     }
     
@@ -136,9 +136,17 @@ export class PlaneProjection extends ThreeScene{
         let offsets = this.__box.scale.clone();
         this.__boxL.scale.copy(this.__box.scale);
         this.__boxR.scale.copy(this.__box.scale);
+
         this.__box.position.set(0, this.__box.scale.y * 0.5, 0);
         this.__boxL.position.set(0, offsets.y * 0.5, (offsets.z + 5));
         this.__boxR.position.set(0, offsets.y * 0.5, -(offsets.z + 5));
+
+        this.__boxL.rotation.copy(this.__box.rotation);
+        this.__boxR.rotation.copy(this.__box.rotation);
+
+        this.__box.updateMatrixWorld();
+        this.__boxL.updateMatrixWorld();
+        this.__boxR.updateMatrixWorld();
     }
 
     __updateLightArrows(){
@@ -149,7 +157,6 @@ export class PlaneProjection extends ThreeScene{
         this.__lightNormalArrow.setDirection(normal);
         this.__lightP1Arrow.setDirection(p1);
         this.__lightP2Arrow.setDirection(p2);
-        // console.log('UPDATE DIRECTION ::: ', normal);
     }
 
     __projectCoordinates(){
@@ -163,10 +170,14 @@ export class PlaneProjection extends ThreeScene{
             let points = [];
             let vertices = mesh.geometry.getAttribute('position').array;
             let total = vertices.length;
+            mesh.updateMatrixWorld();
             for(let index=0;index < total; index+=3){
+                let pVertex = new Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
                 let p = new Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
                 let uv = null;
-                p = p.applyMatrix4(mesh.matrixWorld);
+                p.applyMatrix4(mesh.matrixWorld);
+                // pVertex.applyMatrix4(mesh.matrixWorld);
+                // p = plane.projectPoint(pVertex, p);
                 uv = project(origin, p, p1, p2);
                 minBounds.x = Math.min(uv.x, minBounds.x);
                 minBounds.y = Math.min(uv.y, minBounds.y);
@@ -178,25 +189,28 @@ export class PlaneProjection extends ThreeScene{
         }        
         let origin = this.__directionalLight.position.clone();
         let np1p2 = this.__getPrincipleAxes();
+        let plane = new Plane(np1p2['normal'], origin.length());        
         let p1 = np1p2['p1'];
         let p2 = np1p2['p2'];
         let points2D = [];
         let minBounds = new Vector2(1e7, 1e7);
         let maxBounds = new Vector2(-1e7, -1e7);
         if(this.__boxContributes){
-            points2D.concat(updateMinMax(this.__box, minBounds, maxBounds));
+            points2D = points2D.concat(updateMinMax(this.__box, minBounds, maxBounds));
         }
         if(this.__boxLContributes){
-            points2D.concat(updateMinMax(this.__boxL, minBounds, maxBounds));
+            points2D = points2D.concat(updateMinMax(this.__boxL, minBounds, maxBounds));
         }
         if(this.__boxRContributes){
-            points2D.concat(updateMinMax(this.__boxR, minBounds, maxBounds));
-        }        
+            points2D = points2D.concat(updateMinMax(this.__boxR, minBounds, maxBounds));
+        }       
+        
         this.__canvasProjection.points = points2D;
         this.__updateShadowCamera(minBounds, maxBounds);
     }
 
     __updateShadowCamera(minBounds, maxBounds){
+        console.log('MIN AND MAX : ', minBounds, maxBounds);
         let multiplier = 1;
         let width = maxBounds.x - minBounds.x;
         let height = maxBounds.y - minBounds.y;
@@ -207,16 +221,16 @@ export class PlaneProjection extends ThreeScene{
 
         this.__directionalLight.shadow.camera.right = maxBounds.x * multiplier;        
         this.__directionalLight.shadow.camera.bottom = minBounds.y * multiplier;
-        
-        this.__directionalLight.shadow.camera.updateProjectionMatrix();
-        // this.__directionalLight.shadow.camera.updateMatrixWorld();
 
+        this.__directionalLight.updateMatrixWorld();
+
+        this.__directionalShadowCameraHelper.camera = this.__directionalLight.shadow.camera;
+        this.__directionalShadowCameraHelper.matrixWorld = this.__directionalLight.shadow.camera.matrixWorld;
+        this.__directionalShadowCameraHelper.update();
+        // this.__directionalShadowCameraHelper.updateMatrixWorld();
     }
 
-    __meshUpdated(value){        
-        this.__ambientLight.visible = this.__ambiLight;
-        this.__hemisphereLight.visible = this.__hemiLight;
-        this.__directionalLight.visible = this.__dirLight;
+    __meshUpdated(value){
         this.__boxAboveTheGround();
         this.__updateLightArrows();
         this.__projectCoordinates();

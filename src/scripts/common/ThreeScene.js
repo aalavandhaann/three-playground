@@ -123,6 +123,9 @@ export class ThreeScene extends Scene{
         this.add(directionLight.target);
         this.add(directionLightHelper);
         this.add(cameraHelper);
+        // cameraHelper.matrixAutoUpdate = true;
+        // cameraHelper.matrixWorldAutoUpdate = true;
+        // cameraHelper.updateMatrixWorld();
 
     }
     __getRenderer(){
@@ -132,8 +135,8 @@ export class ThreeScene extends Scene{
         renderer.shadowMap.type = PCFSoftShadowMap;
         renderer.outputEncoding = sRGBEncoding;
         renderer.toneMapping = LinearToneMapping;
-        
-        renderer.shadowCameraFar = this.__camera.far;
+        renderer.physicallyCorrectLights = true;
+        // renderer.shadowCameraFar = this.__camera.far;
 
         renderer.setClearColor(0xFFFFFF, 0);
         renderer.setPixelRatio(window.devicePixelRatio);

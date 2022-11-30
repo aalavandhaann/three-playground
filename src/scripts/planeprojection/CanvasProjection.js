@@ -3,8 +3,8 @@ import { Vector2 } from "three";
 
 export class CanvasProjection{
     constructor(domParentID){
-        this.__canvasWidth = 128;
-        this.__canvasHeight = 128;
+        this.__canvasWidth = 350;
+        this.__canvasHeight = this.__canvasWidth * (9/16);
         this.__canvasOrigin = new Vector2(this.__canvasWidth * 0.5, this.__canvasHeight * 0.5);
         this.__points = [];
         this.__domParent = document.getElementById(domParentID);
