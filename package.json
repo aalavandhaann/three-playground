@@ -9,6 +9,7 @@
   "type": "module",
   "scripts": {
     "run-playground": "parcel src/index.html --dist-dir app/ --port 1235",
+    "build-playground-git": "parcel build src/index.html --dist-dir demo/ --public-url . --no-content-hash",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "#0K Srinivasan",
