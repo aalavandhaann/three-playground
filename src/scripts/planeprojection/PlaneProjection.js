@@ -15,8 +15,14 @@ export class PlaneProjection extends ThreeScene{
         this.__lightNormal = null;
         this.__meshUpdatedEvent = this.__meshUpdated.bind(this);
         this.__canvasProjection = new CanvasProjection(this.__domID);
+        this.__boxContributes = true;
+        this.__boxLContributes = true;
+        this.__boxRContributes = true;
+        this.__ambiLight = true;
+        this.__hemiLight = true;
+        this.__dirLight = true;
         this.__addLightArrows();
-        this.__addBox();
+        this.__addMeshes();
         this.__addGUI();
         this.__meshUpdated();
     }
@@ -25,7 +31,12 @@ export class PlaneProjection extends ThreeScene{
         let gui = new GUI({name: 'Plane Projector'});
         let meshSizeFolder = gui.addFolder('Mesh Size')
         let meshRotationFolder = gui.addFolder('Mesh Orientation');
-        let lightConfiguration = gui.addFolder('Light Configuration')
+        let lightConfiguration = gui.addFolder('Directional Light Configuration');
+        let lightStrengthConfiguration = gui.addFolder('Lights Property Configuration');
+
+        let shadowsConfiguration = gui.addFolder('Shadow Contributors');
+        let lightContributorsConfiguration = gui.addFolder('Light Contributors');
+
 
         meshSizeFolder.add(this.__box.scale, 'x', 0.1, this.__maxBoxWidth).onChange(this.__meshUpdatedEvent);
         meshSizeFolder.add(this.__box.scale, 'y', 0.1, this.__maxBoxHeight).onChange(this.__meshUpdatedEvent);
@@ -37,13 +48,34 @@ export class PlaneProjection extends ThreeScene{
         lightConfiguration.add(this.__directionalLight.position, 'y', 0.0, this.__maxBoxHeight).onChange(this.__meshUpdatedEvent).name('Position Y');
         lightConfiguration.add(this.__directionalLight.position, 'z', -this.__maxBoxDepth, this.__maxBoxDepth).onChange(this.__meshUpdatedEvent).name('Position Z');
 
-        lightConfiguration.add(this.__directionalLight.target.position, 'x', -this.__maxBoxWidth, this.__maxBoxWidth).onChange(this.__meshUpdatedEvent).name('Target X');
-        lightConfiguration.add(this.__directionalLight.target.position, 'y', 0.1, this.__maxBoxHeight).onChange(this.__meshUpdatedEvent).name('Target Y');
-        lightConfiguration.add(this.__directionalLight.target.position, 'z', -this.__maxBoxDepth, this.__maxBoxDepth).onChange(this.__meshUpdatedEvent).name('Target Z');
+        lightConfiguration.add(this.__directionalLight.target.position, 'x', -this.__maxBoxWidth, this.__maxBoxWidth).onChange(this.__meshUpdatedEvent).name('Focus X');
+        lightConfiguration.add(this.__directionalLight.target.position, 'y', 0.1, this.__maxBoxHeight).onChange(this.__meshUpdatedEvent).name('Focus Y');
+        lightConfiguration.add(this.__directionalLight.target.position, 'z', -this.__maxBoxDepth, this.__maxBoxDepth).onChange(this.__meshUpdatedEvent).name('Focus Z');
+
+        lightStrengthConfiguration.add(this.__directionalLight, 'intensity', 0.0, 5.0).onChange(this.__meshUpdatedEvent).name('Directional Intensity');
+        lightStrengthConfiguration.add(this.__ambientLight, 'intensity', 0.0, 5.0).onChange(this.__meshUpdatedEvent).name('Ambient Intensity');
+        lightStrengthConfiguration.add(this.__hemisphereLight, 'intensity', 0.0, 5.0).onChange(this.__meshUpdatedEvent).name('Hemisphere Intensity');
+
+        lightStrengthConfiguration.addColor(this.__directionalLight, 'color').onChange(this.__meshUpdatedEvent).name('Directional Color');
+        lightStrengthConfiguration.addColor(this.__ambientLight, 'color').onChange(this.__meshUpdatedEvent).name('Ambient Color');
+        lightStrengthConfiguration.addColor(this.__hemisphereLight, 'color').onChange(this.__meshUpdatedEvent).name('Hemisphere Sky');
+        lightStrengthConfiguration.addColor(this.__hemisphereLight, 'groundColor').onChange(this.__meshUpdatedEvent).name('Hemisphere Ground');
         
+        shadowsConfiguration.add(this, '__boxContributes').name('Box Middle').onChange(this.__meshUpdatedEvent);
+        shadowsConfiguration.add(this, '__boxLContributes').name('Box Left').onChange(this.__meshUpdatedEvent);
+        shadowsConfiguration.add(this, '__boxRContributes').name('Box Right').onChange(this.__meshUpdatedEvent);
+
+        lightContributorsConfiguration.add(this, '__ambiLight').name('Ambient Light').onChange(this.__meshUpdatedEvent);
+        lightContributorsConfiguration.add(this, '__hemiLight').name('Hemisphere Light').onChange(this.__meshUpdatedEvent);
+        lightContributorsConfiguration.add(this, '__dirLight').name('Directional Light').onChange(this.__meshUpdatedEvent);
+
+
         meshSizeFolder.open();
         meshRotationFolder.open();
         lightConfiguration.open();
+        shadowsConfiguration.open();
+        lightContributorsConfiguration.open();
+        lightStrengthConfiguration.open();
     }
 
     __getPrincipleAxes(){
@@ -66,17 +98,47 @@ export class PlaneProjection extends ThreeScene{
         this.__directionalLight.add(p1Arrow);
         this.__directionalLight.add(p2Arrow);
     }
-    __addBox(){
+
+    __addPillar(x=0, y=0, z=0){
+        let pillarMaterial = new MeshStandardMaterial({color: 0xF0F0F0});
+        let pillarGeometry = new BoxGeometry(10, 50, 10);
+        let pillar = new Mesh(pillarGeometry, pillarMaterial);
+        pillar.castShadow = true;
+        pillar.receiveShadow = true;
+        pillar.position.set(x, y, z);
+        this.add(pillar);
+        return pillar;
+    }
+
+    __addABox(){
         let boxGeometry = new BoxGeometry(1, 1, 1);
         let boxMaterial = new MeshStandardMaterial({color: 0xF0F0F0});
         let box = new Mesh(boxGeometry, boxMaterial);
-        this.__box = box;
-        this.__box.scale.set(30, 30, this.__maxBoxDepth);
-        this.add(box);                
+        box.scale.set(30, 30, 30);
+        box.castShadow = true;
+        box.receiveShadow = true;
+        return box;
+    }
+    
+    __addMeshes(){
+        this.__box = this.__addABox();
+        this.__boxL = this.__addABox();
+        this.__boxR = this.__addABox();
+        this.__addPillar(55, 25, -45);
+        this.__addPillar(55, 25, 0);
+        this.__addPillar(55, 25, 45);         
+        this.add(this.__box);
+        this.add(this.__boxL);
+        this.add(this.__boxR);
     }
 
     __boxAboveTheGround(){
-        this.__box.position.set(0, this.__box.scale.y * 0.5,0);
+        let offsets = this.__box.scale.clone();
+        this.__boxL.scale.copy(this.__box.scale);
+        this.__boxR.scale.copy(this.__box.scale);
+        this.__box.position.set(0, this.__box.scale.y * 0.5, 0);
+        this.__boxL.position.set(0, offsets.y * 0.5, (offsets.z + 5));
+        this.__boxR.position.set(0, offsets.y * 0.5, -(offsets.z + 5));
     }
 
     __updateLightArrows(){
@@ -97,55 +159,64 @@ export class PlaneProjection extends ThreeScene{
             let v = PO.dot(J);
             return new Vector2(u, v);
         }
+        function updateMinMax(mesh, minBounds, maxBounds){
+            let points = [];
+            let vertices = mesh.geometry.getAttribute('position').array;
+            let total = vertices.length;
+            for(let index=0;index < total; index+=3){
+                let p = new Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
+                let uv = null;
+                p = p.applyMatrix4(mesh.matrixWorld);
+                uv = project(origin, p, p1, p2);
+                minBounds.x = Math.min(uv.x, minBounds.x);
+                minBounds.y = Math.min(uv.y, minBounds.y);
+                maxBounds.x = Math.max(uv.x, maxBounds.x);
+                maxBounds.y = Math.max(uv.y, maxBounds.y);
+                points.push(uv);
+            }
+            return points;
+        }        
         let origin = this.__directionalLight.position.clone();
         let np1p2 = this.__getPrincipleAxes();
         let p1 = np1p2['p1'];
         let p2 = np1p2['p2'];
-        let vertices = this.__box.geometry.getAttribute('position');
-        let index = 0;
-        let total = vertices.array.length;
         let points2D = [];
         let minBounds = new Vector2(1e7, 1e7);
         let maxBounds = new Vector2(-1e7, -1e7);
-        // this.__box.geometry.computeBoundingBox();
-        // console.log(this.__box.geometry);
-        // console.log(`POSITIONS :: ${vertices.array}`);
-        // console.log(`TOTAL : ${total}`);
-        for(;index < total; index+=3){
-            let p = new Vector3(vertices.array[index], vertices.array[index + 1], vertices.array[index + 2]);
-            let uv = null;
-            p = p.applyMatrix4(this.__box.matrixWorld);
-            uv = project(origin, p, p1, p2);
-            minBounds.x = Math.min(uv.x, minBounds.x);
-            minBounds.y = Math.min(uv.y, minBounds.y);
-            maxBounds.x = Math.max(uv.x, maxBounds.x);
-            maxBounds.y = Math.max(uv.y, maxBounds.y);
-            points2D.push(uv);
-            // console.log(`3D : <${p.x}, ${p.y}, ${p.z}>, 2D: <${uv.x}, ${uv.y}>`);
+        if(this.__boxContributes){
+            points2D.concat(updateMinMax(this.__box, minBounds, maxBounds));
         }
+        if(this.__boxLContributes){
+            points2D.concat(updateMinMax(this.__boxL, minBounds, maxBounds));
+        }
+        if(this.__boxRContributes){
+            points2D.concat(updateMinMax(this.__boxR, minBounds, maxBounds));
+        }        
         this.__canvasProjection.points = points2D;
         this.__updateShadowCamera(minBounds, maxBounds);
     }
 
     __updateShadowCamera(minBounds, maxBounds){
+        let multiplier = 1;
         let width = maxBounds.x - minBounds.x;
         let height = maxBounds.y - minBounds.y;
         const d = Math.max(width, height);
-        this.__directionalLight.shadow.camera.left = -d;
-        this.__directionalLight.shadow.camera.top = d;
 
-        this.__directionalLight.shadow.camera.right = d;        
-        this.__directionalLight.shadow.camera.bottom = -d;
-        this.__directionalLight.shadow.camera.matrixWorldNeedsUpdate = true;
+        this.__directionalLight.shadow.camera.left = minBounds.x * multiplier;
+        this.__directionalLight.shadow.camera.top = maxBounds.y * multiplier;
 
-        console.log(minBounds, maxBounds);
-        console.log(width, height, d);
-        console.log(this.__directionalLight.shadow.camera);
+        this.__directionalLight.shadow.camera.right = maxBounds.x * multiplier;        
+        this.__directionalLight.shadow.camera.bottom = minBounds.y * multiplier;
         
         this.__directionalLight.shadow.camera.updateProjectionMatrix();
+        // this.__directionalLight.shadow.camera.updateMatrixWorld();
+
     }
 
-    __meshUpdated(value){
+    __meshUpdated(value){        
+        this.__ambientLight.visible = this.__ambiLight;
+        this.__hemisphereLight.visible = this.__hemiLight;
+        this.__directionalLight.visible = this.__dirLight;
         this.__boxAboveTheGround();
         this.__updateLightArrows();
         this.__projectCoordinates();

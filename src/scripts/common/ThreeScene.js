@@ -34,8 +34,8 @@ export class ThreeScene extends Scene{
 
         this.__proceeduralCloudSystem = null;
 
-        this.__cameraRestPosition = new Vector3(-20, 150, 200);
-        this.__cameraTargetPosition = new Vector3(50, 0, 50);
+        this.__cameraRestPosition = new Vector3(150, 250, 150);
+        this.__cameraTargetPosition = new Vector3(0, 0, 0);
 
         this.__stats = new Stats();
         document.body.appendChild(this.__stats.dom);
@@ -55,7 +55,7 @@ export class ThreeScene extends Scene{
         this.__axes = new AxesHelper(BOUNDS.x);
         this.__grid = new GridHelper(500, 10);
         this.__controls = new OrbitControls(this.__camera, this.__domElement);
-        this.__fog = new FogExp2(0x03544E, 0.001);
+        this.__fog = new FogExp2(0xFFFFFF, 0.0001);
                 
         this.__controls.enableDamping = true;
         this.__controls.dampingFactor = 0.5;
@@ -67,7 +67,7 @@ export class ThreeScene extends Scene{
         this.__camera.position.copy(this.__cameraRestPosition);
         this.__controls.target.copy(this.__cameraTargetPosition.clone());
         
-        this.fog = this.__fog;       
+        // this.fog = this.__fog;       
         this.__controls.update();
 
         this.add(this.__grid);
@@ -87,16 +87,14 @@ export class ThreeScene extends Scene{
         const d1 = 90;
         const d2 = 45;
         let hemiLight = new HemisphereLight(0xFFFFFF, 0x999999, 0.5);
-        let ambiLight = new AmbientLight(0xFFFFFF);
-        let directionLight = new DirectionalLight(0xF5AF19, 1.0);
+        let ambiLight = new AmbientLight(0xFFFFFF, 0.15);
+        let directionLight = new DirectionalLight(0xFFFFFF, 1.0);
         let directionLightHelper = new DirectionalLightHelper(directionLight);
         let cameraHelper = new CameraHelper( directionLight.shadow.camera );
         
-
-        ambiLight.intensity = 0.15;
+        
         hemiLight.position.set(0, 1000, 0);
-
-        directionLight.position.set(100, 0, 0);
+        directionLight.position.set(100, 100, 0);
         directionLight.target.position.set(0, 0, 0);
 
         directionLight.shadow.camera.left = -d1;
@@ -106,8 +104,8 @@ export class ThreeScene extends Scene{
         directionLight.shadow.camera.near = 0;
         directionLight.shadow.camera.far = 200;
         directionLight.shadow.autoUpdate = true;
-        // directionLight.shadow.mapSize.width = d1 * 2;
-        // directionLight.shadow.mapSize.height = d2 * 2;
+        directionLight.shadow.mapSize.width = 512
+        directionLight.shadow.mapSize.height = 512;
 
         directionLight.shadow.mapSize.set(d1, d2);
 
