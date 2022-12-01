@@ -102,7 +102,7 @@ export class ThreeScene extends Scene{
         directionLight.shadow.camera.top = d2;
         directionLight.shadow.camera.bottom = -d2;
         directionLight.shadow.camera.near = 0;
-        directionLight.shadow.camera.far = 200;
+        directionLight.shadow.camera.far = 50;
         directionLight.shadow.autoUpdate = true;
         directionLight.shadow.mapSize.width = 512
         directionLight.shadow.mapSize.height = 512;
@@ -148,7 +148,6 @@ export class ThreeScene extends Scene{
         let widthMargin = this.__domElement.offsetLeft;
         let elementWidth = window.innerWidth - widthMargin;
         let elementHeight = window.innerHeight - heightMargin;
-
         return new Vector2(elementWidth, elementHeight);
     }
 

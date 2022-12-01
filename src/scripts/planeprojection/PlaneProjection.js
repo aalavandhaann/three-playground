@@ -166,7 +166,7 @@ export class PlaneProjection extends ThreeScene{
             let PO = P.clone().sub(O);
             let u = PO.dot(I);
             let v = PO.dot(J);
-            return new Vector2(u, v);
+            return new Vector3(u, v, 0);
         }
         function updateMinMax(mesh, minBounds, maxBounds){
             let points = [];
@@ -175,16 +175,23 @@ export class PlaneProjection extends ThreeScene{
             mesh.updateMatrixWorld();
             for(let index=0;index < total; index+=3){
                 let pVertex = new Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
-                let p = new Vector3(vertices[index], vertices[index + 1], vertices[index + 2]);
+                let p = new Vector3();
                 let uv = null;
-                p.applyMatrix4(mesh.matrixWorld);
-                // pVertex.applyMatrix4(mesh.matrixWorld);
-                // p = plane.projectPoint(pVertex, p);
+                let distance = 0;
+                pVertex.applyMatrix4(mesh.matrixWorld);
+                p = plane.projectPoint(pVertex, p);
                 uv = project(origin, p, p1, p2);
+                distance = pVertex.clone().sub(p).length();
+                
                 minBounds.x = Math.min(uv.x, minBounds.x);
                 minBounds.y = Math.min(uv.y, minBounds.y);
+                
                 maxBounds.x = Math.max(uv.x, maxBounds.x);
                 maxBounds.y = Math.max(uv.y, maxBounds.y);
+
+                minBounds.z = Math.min(distance, minBounds.z);
+                maxBounds.z = Math.max(distance, maxBounds.z);
+
                 points.push(uv);
             }
             return points;
@@ -195,8 +202,8 @@ export class PlaneProjection extends ThreeScene{
         let p1 = np1p2['p1'];
         let p2 = np1p2['p2'];
         let points2D = [];
-        let minBounds = new Vector2(1e7, 1e7);
-        let maxBounds = new Vector2(-1e7, -1e7);
+        let minBounds = new Vector3(1e7, 1e7, 1e7);
+        let maxBounds = new Vector3(-1e7, -1e7, -1e7);
         if(this.__boxContributes){
             points2D = points2D.concat(updateMinMax(this.__box, minBounds, maxBounds));
         }
@@ -212,19 +219,16 @@ export class PlaneProjection extends ThreeScene{
     }
 
     __updateShadowCamera(minBounds, maxBounds){
-        console.log('MIN AND MAX : ', minBounds, maxBounds);
-        let multiplier = 1;
-        let width = maxBounds.x - minBounds.x;
-        let height = maxBounds.y - minBounds.y;
-        const d = Math.max(width, height);
+        this.__directionalLight.shadow.camera.left = minBounds.x;
+        this.__directionalLight.shadow.camera.top = maxBounds.y;
 
-        this.__directionalLight.shadow.camera.left = minBounds.x * multiplier;
-        this.__directionalLight.shadow.camera.top = maxBounds.y * multiplier;
+        this.__directionalLight.shadow.camera.right = maxBounds.x;        
+        this.__directionalLight.shadow.camera.bottom = minBounds.y;
 
-        this.__directionalLight.shadow.camera.right = maxBounds.x * multiplier;        
-        this.__directionalLight.shadow.camera.bottom = minBounds.y * multiplier;
+        this.__directionalLight.shadow.camera.far = maxBounds.z;        
+        this.__directionalLight.shadow.camera.near = 0.1;//minBounds.z;
 
-        this.__directionalLight.updateMatrixWorld();
+        // this.__directionalLight.updateMatrixWorld();
         this.__updateShadowCameraView();
 
         // this.__directionalShadowCameraHelper.camera = this.__directionalLight.shadow.camera;
