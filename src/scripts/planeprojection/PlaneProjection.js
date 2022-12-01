@@ -1,5 +1,5 @@
 import { GUI } from "dat.gui";
-import { Plane } from "three";
+import { CameraHelper, Plane } from "three";
 import { ArrowHelper, BoxGeometry, Mesh, MeshStandardMaterial, Vector2, Vector3 } from "three";
 import { ThreeScene } from "../common/ThreeScene";
 import { CanvasProjection } from "./CanvasProjection";
@@ -19,6 +19,7 @@ export class PlaneProjection extends ThreeScene{
         this.__boxContributes = true;
         this.__boxLContributes = true;
         this.__boxRContributes = true;
+        this.__shadowCameraViewUpdate = this.__updateShadowCameraView.bind(this);
         this.__addLightArrows();
         this.__addMeshes();
         this.__addGUI();
@@ -34,6 +35,7 @@ export class PlaneProjection extends ThreeScene{
 
         let shadowsConfiguration = gui.addFolder('Shadow Contributors');
         let lightContributorsConfiguration = gui.addFolder('Light Contributors');
+        let shadowCameraViewUpdateEvent = this.__updateShadowCameraView.bind(this);
 
 
         meshSizeFolder.add(this.__box.scale, 'x', 0.1, this.__maxBoxWidth).onChange(this.__meshUpdatedEvent);
@@ -49,6 +51,7 @@ export class PlaneProjection extends ThreeScene{
         lightConfiguration.add(this.__directionalLight.target.position, 'x', -this.__maxBoxWidth, this.__maxBoxWidth).onChange(this.__meshUpdatedEvent).name('Focus X');
         lightConfiguration.add(this.__directionalLight.target.position, 'y', 0.1, this.__maxBoxHeight).onChange(this.__meshUpdatedEvent).name('Focus Y');
         lightConfiguration.add(this.__directionalLight.target.position, 'z', -this.__maxBoxDepth, this.__maxBoxDepth).onChange(this.__meshUpdatedEvent).name('Focus Z');
+        lightConfiguration.add(this, '__shadowCameraViewUpdate').name('Update');
 
         lightStrengthConfiguration.add(this.__directionalLight, 'intensity', 0.0, 5.0).onChange(this.__meshUpdatedEvent).name('Directional Intensity');
         lightStrengthConfiguration.add(this.__ambientLight, 'intensity', 0.0, 5.0).onChange(this.__meshUpdatedEvent).name('Ambient Intensity');
@@ -62,12 +65,11 @@ export class PlaneProjection extends ThreeScene{
         shadowsConfiguration.add(this, '__boxContributes').name('Box Middle').onChange(this.__meshUpdatedEvent);
         shadowsConfiguration.add(this, '__boxLContributes').name('Box Left').onChange(this.__meshUpdatedEvent);
         shadowsConfiguration.add(this, '__boxRContributes').name('Box Right').onChange(this.__meshUpdatedEvent);
+        
 
         lightContributorsConfiguration.add(this.__ambientLight, 'visible').name('Ambient Light').onChange(this.__meshUpdatedEvent);
         lightContributorsConfiguration.add(this.__hemisphereLight, 'visible').name('Hemisphere Light').onChange(this.__meshUpdatedEvent);
         lightContributorsConfiguration.add(this.__directionalLight, 'visible').name('Directional Light').onChange(this.__meshUpdatedEvent);
-
-
         // meshSizeFolder.open();
         // meshRotationFolder.open();
         // lightConfiguration.open();
@@ -223,11 +225,22 @@ export class PlaneProjection extends ThreeScene{
         this.__directionalLight.shadow.camera.bottom = minBounds.y * multiplier;
 
         this.__directionalLight.updateMatrixWorld();
+        this.__updateShadowCameraView();
 
-        this.__directionalShadowCameraHelper.camera = this.__directionalLight.shadow.camera;
-        this.__directionalShadowCameraHelper.matrixWorld = this.__directionalLight.shadow.camera.matrixWorld;
-        this.__directionalShadowCameraHelper.update();
+        // this.__directionalShadowCameraHelper.camera = this.__directionalLight.shadow.camera;
+        // this.__directionalShadowCameraHelper.matrixWorld = this.__directionalLight.shadow.camera.matrixWorld;
+        // this.__directionalShadowCameraHelper.update();
         // this.__directionalShadowCameraHelper.updateMatrixWorld();
+    }
+
+    __updateShadowCameraView(){
+        let cameraHelper = new CameraHelper( this.__directionalLight.shadow.camera );
+        let currentHelper = this.__directionalShadowCameraHelper;
+        
+        this.__directionalShadowCameraHelper = cameraHelper;
+
+        this.remove(currentHelper);
+        this.add(cameraHelper);        
     }
 
     __meshUpdated(value){
