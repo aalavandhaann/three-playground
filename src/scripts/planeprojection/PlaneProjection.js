@@ -80,7 +80,7 @@ export class PlaneProjection extends ThreeScene{
 
     __getPrincipleAxes(object3d = null){
         object3d = (object3d) ? object3d : this.__directionalLight;
-        let normal = this.__directionalLight.target.position.clone().sub(this.__directionalLight.position).normalize();
+        let normal = object3d.target.position.clone().sub(object3d.position).normalize();
         let p1 = normal.clone().cross(UP_DIRECTION).normalize();
         let p2 = p1.clone().applyAxisAngle(normal, -Math.PI * 0.5).normalize();
         return {'normal': normal, 'p1': p1, 'p2': p2};
@@ -184,9 +184,9 @@ export class PlaneProjection extends ThreeScene{
                 distance = pVertex.clone().sub(p).length();
                 
                 minBounds.x = Math.min(uv.x, minBounds.x);
-                minBounds.y = Math.min(uv.y, minBounds.y);
+                maxBounds.x = Math.max(uv.x, maxBounds.x);                
                 
-                maxBounds.x = Math.max(uv.x, maxBounds.x);
+                minBounds.y = Math.min(uv.y, minBounds.y);
                 maxBounds.y = Math.max(uv.y, maxBounds.y);
 
                 minBounds.z = Math.min(distance, minBounds.z);
@@ -238,13 +238,15 @@ export class PlaneProjection extends ThreeScene{
     }
 
     __updateShadowCameraView(){
-        let cameraHelper = new CameraHelper( this.__directionalLight.shadow.camera );
-        let currentHelper = this.__directionalShadowCameraHelper;
+        this.__directionalLight.shadow.camera.updateProjectionMatrix();
+        this.__directionalShadowCameraHelper.update();
+        // let cameraHelper = new CameraHelper( this.__directionalLight.shadow.camera );
+        // let currentHelper = this.__directionalShadowCameraHelper;
         
-        this.__directionalShadowCameraHelper = cameraHelper;
+        // this.__directionalShadowCameraHelper = cameraHelper;
 
-        this.remove(currentHelper);
-        this.add(cameraHelper);        
+        // this.remove(currentHelper);
+        // this.add(cameraHelper);        
     }
 
     __meshUpdated(value){
